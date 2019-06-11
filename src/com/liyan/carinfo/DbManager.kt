@@ -122,7 +122,7 @@ class DbManager{
     }
 
     fun queryInfo(groupId:String?):String? {
-        val rs = getStmt()?.executeQuery("select * from msgdata where [group]='$groupId' order by type+time")
+        val rs = getStmt()?.executeQuery("select * from msgdata where [group]='$groupId'  GROUP BY qq  order by type+time")
         var index = 0
         val sb = StringBuilder()
         while (rs?.next() == true) {
