@@ -4,9 +4,6 @@ import com.sobte.cqp.jcq.entity.CoolQ
 import com.time.nlp.TimeNormalizer
 import java.lang.Exception
 import java.util.*
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlin.collections.HashMap
 
@@ -16,10 +13,12 @@ class CarParse {
     private val key=HashMap<String,String>()
     private val viewCommandKey=HashMap<String,String>()
     private val delCommandKey=HashMap<String,String>()
-    private var service: ScheduledExecutorService?= null
+
+    private var thread:Thread?=null
+    private var exit=false
 
     companion object{
-        private const val TAG="MessageManager"
+        private const val TAG="CarParse"
         private const val TYPE_PERSON_STATIC1 = "人找车"
         private const val TYPE_PERSON_STATIC2= "人寻车"
 
@@ -33,9 +32,6 @@ class CarParse {
 
         private const val TYPE_CAR=1
         private const val TYPE_PERSON=2
-
-        private const val AUTO_CHECK_TIME=60L
-
         val instance by lazy(mode =LazyThreadSafetyMode.SYNCHRONIZED ) { CarParse() }
     }
 
@@ -73,8 +69,7 @@ class CarParse {
         try {
             parseExe(qq,groupId,content)
         }catch (e:Exception){
-            CQ?.logInfo(TAG,e.localizedMessage)
-//            cq?.logInfo(MessageManager.TAG,"发送消息:${message.content},groupid:${message.group}")("error:${e.message}")
+            println(e.message)
         }
     }
     private fun parseExe(qq:String,groupId:String?,content: String?) {
@@ -105,7 +100,7 @@ class CarParse {
             if(it.key==content){
                 println("查看拼车信息：$groupId")
                 val content= DbManager.instance.queryInfo(groupId)
-                DbManager.instance.updateNextTime(groupId)
+
                 if(content?.isNotEmpty()==true) {
                     MessageManager.instance.sendMessage(groupId, content)
                 }else{
@@ -232,19 +227,23 @@ class CarParse {
 
         DbManager.instance.start(CQ)
         MessageManager.instance.start(CQ)
-        service = Executors
-            .newSingleThreadScheduledExecutor()
-        service?.scheduleAtFixedRate({
-            DbManager.instance.delTimeOut()
-            DbManager.instance.getAutoSendMessage()?.forEach {
-                MessageManager.instance.sendMessage(it.group,it.content)
+        thread= Thread(Runnable {
+            while (!exit){
+                DbManager.instance.delTimeOut()
+                DbManager.instance.getAutoSendMessage()?.forEach {
+                    MessageManager.instance.sendMessage(it.group,it.content)
+                }
+                println("定时发送任务执行中")
+                Thread.sleep(60*1000)
             }
-        }, 0, AUTO_CHECK_TIME, TimeUnit.SECONDS)
+        })
+        thread?.start()
     }
 
     fun stop(){
         MessageManager.instance.stop()
-        service?.shutdown()
+        exit=true
+        thread=null
         DbManager.instance.quit()
     }
 }

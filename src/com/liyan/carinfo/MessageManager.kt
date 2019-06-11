@@ -1,14 +1,14 @@
 package com.liyan.carinfo
 
 import com.sobte.cqp.jcq.entity.CoolQ
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import java.lang.Exception
+import kotlin.collections.ArrayList
 
 class MessageManager{
 
-    private var service:ScheduledExecutorService?= null
     private var CQ:CoolQ?=null
+    private var thread:Thread?=null
+    private var exit=false
 
     companion object{
         private const val TAG="MessageManager"
@@ -37,7 +37,12 @@ class MessageManager{
         message.group=groupId
         message.content=content
         getMessageList()?.add(message)
-        CQ?.logInfo(TAG,"加入发送队列:$content,groupid:$groupId")
+        println("加入发送队列:$content,groupid:$groupId")
+    }
+
+    private fun println(message: String){
+        System.out.println(message)
+        CQ?.logInfo(TAG,message)
     }
 
     private fun getMessageList():ArrayList<Message>?{
@@ -47,8 +52,14 @@ class MessageManager{
     }
 
     private fun poseMessage(message: Message?){
-        CQ?.logInfo(TAG,"发送消息:${message?.content},groupid:${message?.group}")
-        val groupId=message?.group?.toLong()?:0
+        println("发送消息:${message?.content},groupid:${message?.group}")
+
+        var groupId=0L
+        try {
+            groupId=message?.group?.toLong()?:0
+        }catch (e:Exception){
+            println(e.message)
+        }
         if(groupId!=0L) {
             val content=message?.content?:""
             if(content.isNotEmpty()) {
@@ -59,20 +70,23 @@ class MessageManager{
 
     fun start(CQ:CoolQ?){
         this.CQ=CQ
-        service = Executors
-            .newSingleThreadScheduledExecutor()
-        service?.scheduleAtFixedRate({
-            if(getMessageList()?.isNotEmpty()==true){
-                CQ?.logInfo(TAG,"存在消息，即将发送消息")
-                val message= getMessageList()?.get(0)
-                getMessageList()?.removeAt(0)
-                poseMessage(message)
+        thread= Thread(Runnable {
+            while (!exit){
+                if(getMessageList()?.isNotEmpty()==true){
+                    println("检测到新消息，即将发送消息")
+                    val message= getMessageList()?.get(0)
+                    getMessageList()?.removeAt(0)
+                    poseMessage(message)
+                }
+                Thread.sleep(1000)
             }
-        }, 0, 1, TimeUnit.SECONDS)
+        })
+        thread?.start()
     }
 
     fun stop(){
-        service?.shutdown()
+        exit=true
+        thread=null
     }
 
 }

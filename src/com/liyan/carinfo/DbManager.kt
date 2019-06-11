@@ -9,14 +9,14 @@ import java.sql.ResultSet
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
-
-
+import kotlin.collections.HashMap
 
 
 class DbManager{
 
     private var conn:Connection?=null
     private var CQ:CoolQ?=null
+
     companion object{
         private const val TIME_INTERVAL=30
         const val TAG="DbManager"
@@ -40,11 +40,15 @@ class DbManager{
     }
     
     private fun getStmt():Statement?{
+        return getConnection()?.createStatement();
+    }
+
+    private fun getConnection():Connection?{
         if(conn==null || conn?.isClosed==true){
             Class.forName("org.sqlite.JDBC")
             conn = DriverManager.getConnection("jdbc:sqlite:db/data.db")
         }
-        return conn?.createStatement()
+        return conn
     }
 
     fun add(info: CarParse.Info){
@@ -62,35 +66,35 @@ class DbManager{
 
     private fun queryGroupExist(groupId: String?):Boolean?{
         val rs = getStmt()?.executeQuery("select * from groupinfo where [group]='$groupId'")
-        var result=rs?.next()
+        val result=rs?.next()?:false
         rs?.close()
         return result
     }
 
     fun queryExist(groupId: String?,qq: String?):Boolean{
         val rs = getStmt()?.executeQuery("select * from msgdata where [group]='$groupId' and [qq]='$qq'")
-        val result=rs?.row?:0>0
+        val result=rs?.next()?:false
         rs?.close()
         return result
     }
 
     fun search(groupId: String?,key: String?):String{
-        val sql= "select * from msgdata where "+ splitKeyWord(key) +" order by type+time"
-        val rs = getStmt()?.executeQuery(sql)
+        val sql= "select * from msgdata where "+ splitKeyWord(key) +" GROUP BY qq order by type+time"
+        val rs =getStmt()?.executeQuery(sql)
         var index=0
         val sb=StringBuilder()
         val contentSb = StringBuffer()
-        if(rs?.row?:0>0) {
-            while (rs?.next() == true) {
-                index += 1
-                if (index <= 5) {
-                    if (sb.isNotEmpty()) {
-                        sb.append("\n\n")
-                    }
-                    sb.append(getContent(rs, index))
+        while (rs?.next()==true) {
+            index += 1
+            if (index <= 10) {
+                if (sb.isNotEmpty()) {
+                    sb.append("\n\n")
                 }
+                sb.append(getContent(rs, index))
             }
-            val beginStr = "[$key]搜索结果:\n\n===拼车消息(" + index + "条,只显示前5条)按发车先后==\n\n"
+        }
+        if(index>0) {
+            val beginStr = "[$key]搜索结果:\n\n===拼车消息(" + index + "条,只显示前10条)按发车先后==\n\n"
             contentSb.append(beginStr)
             contentSb.append(sb.toString())
         }
@@ -98,7 +102,7 @@ class DbManager{
         return contentSb.toString()
     }
 
-    fun updateNextTime(groupId: String?){
+    private fun updateNextTime(groupId: String?){
         val sql= "update groupinfo set [time]='${getNextSendTime()}' where [group]='$groupId'"
         getStmt()?.execute(sql)
     }
@@ -143,6 +147,10 @@ class DbManager{
         }
         println(infoStr.toString())
         rs?.close()
+
+        //更新时间
+        DbManager.instance.updateNextTime(groupId)
+
         return infoStr.toString()
     }
 
@@ -176,6 +184,9 @@ class DbManager{
         val time=Calendar.getInstance().timeInMillis
         val sql= "delete from msgdata where time<'$time'"
         getStmt()?.execute(sql)
+
+        val sql1= "delete from msgdata where [group]='null' or qq='null'"
+        getStmt()?.execute(sql1)
     }
 
     fun getAutoSendMessage():List<Message>?{
@@ -183,13 +194,25 @@ class DbManager{
         val time=Calendar.getInstance().timeInMillis
         val sql= "select * from groupinfo where time<='$time'"
         val rs = getStmt()?.executeQuery(sql)
+
+        val groupStr=Utils.readFileByLines("db/groupsetting")
+        val data=groupStr.split("|")
+        val map=HashMap<String,String>()
+        data.forEach{
+            println("保存的群组信息:$it")
+            map.put(it,it)
+        }
         while (rs?.next()==true){
             val group = rs.getString(rs.findColumn("group")) + ""
-            val content = queryInfo(group)
-            val message= Message()
-            message.content=content
-            message.group=group
-            list.add(message)
+            if(map.containsKey(group)) {
+                val content = queryInfo(group)
+                val message = Message()
+                message.content = content
+                message.group = group
+                list.add(message)
+            }else{
+                println("不在自动发送的群组中，请在配置文件中添加")
+            }
         }
         rs?.close()
         return list
