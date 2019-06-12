@@ -48,7 +48,7 @@ public class CarInfo extends JcqAppAbstract implements ICQVer, IMsg, IRequest {
         // 开始模拟群聊消息
 //        demo.groupMsg(0, 10006, 3456789012L, 3333333334L, "", "菜单", 0);
 //        demo.groupMsg(0, 10008, 3456789012L, 11111111114L, "", "小喵呢，出来玩玩呀", 0);
-        demo.groupMsg(0, 10009, 427984429L, 3333333334L, "", "搜 易县11111", 0);
+        demo.groupMsg(0, 10009, 427984429L, 3333333334L, "", "拼车", 0);
 //        demo.groupMsg(0, 10009, 427984429L, 3333333334L, "", "拼车", 0);
 //        demo.groupMsg(0, 10009, 427984429L, 3333333334L, "", "删除", 0);
 //        demo.groupMsg(0, 10009, 427984429L, 3333333334L, "", "搜 车", 0);

@@ -122,7 +122,7 @@ class DbManager{
     }
 
     fun queryInfo(groupId:String?):String? {
-        val rs = getStmt()?.executeQuery("select * from msgdata where [group]='$groupId'  GROUP BY qq  order by type+time")
+        val rs = getStmt()?.executeQuery("select * from msgdata where [group]='$groupId'  GROUP BY qq  order by type,time")
         var index = 0
         val sb = StringBuilder()
         while (rs?.next() == true) {
@@ -160,14 +160,15 @@ class DbManager{
         val strTime=dt.format(time.toLong())
         val type=resultSet.getString(resultSet.findColumn("type"))
         val mobile=resultSet.getString(resultSet.findColumn("mobile"))
-        val content=resultSet.getString(resultSet.findColumn("content"))
+        var content=resultSet.getString(resultSet.findColumn("content"))
         val emoji=if(type=="1"){
             "[CQ:emoji,id=128661]"
         }else {
             "[CQ:emoji,id=128694]"
         }
-        content.replace("\n","")
-        content.replace("\t","")
+        content=Utils.replaceEnter(content)
+
+        content=Utils.replace(content,mobile)
         val sb=StringBuilder()
         sb.append(index)
             .append(emoji)

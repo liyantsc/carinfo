@@ -53,7 +53,10 @@ class MessageManager{
 
     private fun poseMessage(message: Message?){
         println("发送消息:${message?.content},groupid:${message?.group}")
-
+        if(!Utils.isSettingGroup(message?.group?:"")){
+            println("不是设定的群组，此条消息无效")
+            return
+        }
         var groupId=0L
         try {
             groupId=message?.group?.toLong()?:0

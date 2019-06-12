@@ -78,8 +78,10 @@ class CarParse {
             return
         }
 
+        var content=Utils.replaceEnter(content)
+
         println("$content:群组:$groupId:qq:$qq")
-        val content=TransactSQLInjection(content)
+        content=TransactSQLInjection(content)
 
         if(content.substring(0,1)== SEARCH_COMMAND){
             println("搜索拼车信息")
@@ -176,10 +178,6 @@ class CarParse {
         info.phone=phone
         info.content=content.replace("\n","")
 
-        DbManager.instance.add(info)
-
-        println("保存到数据库成功：$content")
-
         var successInfo=""
         if(content.contains(TYPE_CAR_STATIC1)||content.contains(TYPE_CAR_STATIC2)){
             info.type= TYPE_CAR
@@ -188,6 +186,8 @@ class CarParse {
             info.type= TYPE_PERSON
             successInfo= "[CQ:at,qq=$qq][CQ:face,id=76][CQ:face,id=76][CQ:face,id=76]\n登记成功 坐车时间:$timeStr\n取消登记请发送 删除"
         }
+        DbManager.instance.add(info)
+        println("保存到数据库成功：$content")
         successInfo= "$successInfo\n如有任何疑问，请联系QQ：279135138"
         println(successInfo)
         MessageManager.instance.sendMessage(groupId,successInfo)
