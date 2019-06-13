@@ -21,7 +21,7 @@ object Utils{
     }
 
     fun getFormatTime(time:Long?):String?{
-        val dt= SimpleDateFormat("yyyy/MM/dd HH:mm:ss")
+        val dt= SimpleDateFormat("yyyy/MM/dd HH:mm")
         return dt.format(time)
     }
 

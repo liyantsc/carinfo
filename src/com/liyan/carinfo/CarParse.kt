@@ -11,6 +11,8 @@ import kotlin.collections.HashMap
 class CarParse {
 
     private val key=HashMap<String,String>()
+    private val carKey=HashMap<String,String>()
+    private val personKey=HashMap<String,String>()
     private val viewCommandKey=HashMap<String,String>()
     private val delCommandKey=HashMap<String,String>()
 
@@ -19,17 +21,7 @@ class CarParse {
 
     companion object{
         private const val TAG="CarParse"
-        private const val TYPE_PERSON_STATIC1 = "人找车"
-        private const val TYPE_PERSON_STATIC2= "人寻车"
-
-        private const val TYPE_CAR_STATIC1 = "车找人"
-        private const val TYPE_CAR_STATIC2 = "车寻人"
-
-        private const val VIEW_COMMAND1 = "拼车信息"
-        private const val VIEW_COMMAND2 = "拼车"
-
         private const val SEARCH_COMMAND="搜"
-
         private const val TYPE_CAR=1
         private const val TYPE_PERSON=2
         val instance by lazy(mode =LazyThreadSafetyMode.SYNCHRONIZED ) { CarParse() }
@@ -38,18 +30,23 @@ class CarParse {
     private var CQ:CoolQ?=null
 
     init {
-        key[TYPE_PERSON_STATIC1] = TYPE_PERSON_STATIC1
-        key[TYPE_PERSON_STATIC2] = TYPE_PERSON_STATIC2
-        key[TYPE_CAR_STATIC1] = TYPE_CAR_STATIC1
-        key[TYPE_CAR_STATIC2] = TYPE_CAR_STATIC2
 
-        viewCommandKey[VIEW_COMMAND1] = VIEW_COMMAND1
-        viewCommandKey[VIEW_COMMAND2] = VIEW_COMMAND2
+        carKey["车找人"] = ""
+        carKey["车寻人"] = ""
+        carKey["顺路车"] = ""
+        carKey["私家车"] = ""
+        personKey["人找车"]=""
+        personKey["人寻车"]=""
+        key.putAll(carKey)
+        key.putAll(personKey)
 
-        delCommandKey["车满"] = "车满"
-        delCommandKey["删除"] = "删除"
-        delCommandKey["#删除"] = "#删除"
-        delCommandKey["#车满"] = "#车满"
+        viewCommandKey["拼车信息"] = ""
+        viewCommandKey["拼车"] = ""
+
+        delCommandKey["车满"] = ""
+        delCommandKey["删除"] = ""
+        delCommandKey["#删除"] = ""
+        delCommandKey["#车满"] = ""
     }
 
     class Info{
@@ -167,7 +164,7 @@ class CarParse {
         val timeStr= Utils.getFormatTime(descTime?.time)
 
         if((descTime?.time?:0)<Calendar.getInstance().timeInMillis){
-            val message="[CQ:at,qq=$qq]\n登记失败 您的时间{$timeStr}已经过期"
+            val message="[CQ:at,qq=$qq]\n登记失败 您的时间$timeStr"+"已经过期"
             MessageManager.instance.sendMessage(groupId,message)
             return
         }
@@ -179,12 +176,21 @@ class CarParse {
         info.content=content.replace("\n","")
 
         var successInfo=""
-        if(content.contains(TYPE_CAR_STATIC1)||content.contains(TYPE_CAR_STATIC2)){
-            info.type= TYPE_CAR
-            successInfo= "[CQ:at,qq=$qq][CQ:face,id=76][CQ:face,id=76][CQ:face,id=76]\n登记成功 发车时间:$timeStr\n取消登记请发送 删除"
-        }else if(content.contains(TYPE_PERSON_STATIC1)||content.contains(TYPE_PERSON_STATIC2)){
-            info.type= TYPE_PERSON
-            successInfo= "[CQ:at,qq=$qq][CQ:face,id=76][CQ:face,id=76][CQ:face,id=76]\n登记成功 坐车时间:$timeStr\n取消登记请发送 删除"
+
+        val endDesc="机器人每隔30分钟会自动转发您的信息\n如果您想取消登记请发送 删除"
+        carKey.forEach{
+            if(content.contains(it.key)){
+                info.type= TYPE_CAR
+                successInfo= "[CQ:at,qq=$qq][CQ:face,id=76][CQ:face,id=76][CQ:face,id=76]\n登记成功 发车时间:$timeStr\n$endDesc"
+                return@forEach
+            }
+        }
+        personKey.forEach{
+            if(content.contains(it.key)){
+                info.type= TYPE_PERSON
+                successInfo= "[CQ:at,qq=$qq][CQ:face,id=76][CQ:face,id=76][CQ:face,id=76]\n登记成功 坐车时间:$timeStr\n$endDesc"
+                return@forEach
+            }
         }
         DbManager.instance.add(info)
         println("保存到数据库成功：$content")
