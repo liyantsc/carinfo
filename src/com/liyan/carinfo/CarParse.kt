@@ -30,13 +30,18 @@ class CarParse {
     private var CQ:CoolQ?=null
 
     init {
-
+        carKey["車找人"] = ""
+        carKey["車尋人"] = ""
         carKey["车找人"] = ""
+        carKey["順路車"] = ""
+        carKey["私家車"] = ""
         carKey["车寻人"] = ""
         carKey["顺路车"] = ""
         carKey["私家车"] = ""
         personKey["人找车"]=""
         personKey["人寻车"]=""
+        personKey["人尋車"]=""
+        personKey["人找車"]=""
         key.putAll(carKey)
         key.putAll(personKey)
 
@@ -75,15 +80,17 @@ class CarParse {
             return
         }
 
-        var content=Utils.replaceEnter(content)
-
+        if(Utils.isBlackList(qq)){
+            println("黑名单QQ：$qq")
+            return
+        }
         println("$content:群组:$groupId:qq:$qq")
-        content=TransactSQLInjection(content)
+//        var content=TransactSQLInjection(content)
 
         if(content.substring(0,1)== SEARCH_COMMAND){
             println("搜索拼车信息")
             if(content.length>1) {
-                val key = content.substring(2)
+                val key = content.substring(1).trim()
                 println("搜索关键字：$key")
                 val content= DbManager.instance.search(groupId,key)
                 if(content.isNotEmpty()){
@@ -116,7 +123,6 @@ class CarParse {
                 if(result){
                     DbManager.instance.delMsgData(qq,groupId)
                     content= "[CQ:at,qq=$qq]\n删除成功，您的信息将不再转发"
-                    MessageManager.instance.sendMessage(groupId,content)
                 }else{
                     content="[CQ:at,qq=$qq]\n虽然我是机器人，但也不能这么调戏我"
                 }
@@ -162,9 +168,13 @@ class CarParse {
         }
         val descTime = unit?.get(0)?.time
         val timeStr= Utils.getFormatTime(descTime?.time)
-
         if((descTime?.time?:0)<Calendar.getInstance().timeInMillis){
             val message="[CQ:at,qq=$qq]\n登记失败 您的时间$timeStr"+"已经过期"
+            MessageManager.instance.sendMessage(groupId,message)
+            return
+        }
+        if((descTime?.time?:0)>Calendar.getInstance().timeInMillis+7*24*3600*1000){
+            val message="[CQ:at,qq=$qq]\n目前只支持登记7天以内的信息！"
             MessageManager.instance.sendMessage(groupId,message)
             return
         }
@@ -177,7 +187,7 @@ class CarParse {
 
         var successInfo=""
 
-        val endDesc="机器人每隔30分钟会自动转发您的信息\n如果您想取消登记请发送 删除"
+        val endDesc="机器人每隔${DbManager.TIME_INTERVAL}分钟会自动转发您的信息\n如果您想取消登记请发送 删除"
         carKey.forEach{
             if(content.contains(it.key)){
                 info.type= TYPE_CAR

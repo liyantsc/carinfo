@@ -18,7 +18,7 @@ class DbManager{
     private var CQ:CoolQ?=null
 
     companion object{
-        private const val TIME_INTERVAL=30
+        const val TIME_INTERVAL=60
         const val TAG="DbManager"
         val instance: DbManager by lazy(mode = LazyThreadSafetyMode.NONE) { DbManager() }
     }
@@ -140,9 +140,8 @@ class DbManager{
             val beginStr = "===拼车消息(" + index + "条)按发车先后==\n\n"
             infoStr.append(beginStr)
             val endTime = getNextSendTime()
-            val dt = SimpleDateFormat("HH:mm:ss")
             infoStr.append(sb.toString())
-            val endStr = "\n\n下次转发时间:" + dt.format(endTime) + ",取消登记请发送 删除"
+            val endStr = "\n\n下次转发时间:" + Utils.getFormatTime(endTime) + ",取消登记请发送 删除"
             infoStr.append(endStr)
         }
         println(infoStr.toString())
@@ -182,12 +181,17 @@ class DbManager{
     }
 
     fun delTimeOut(){
-        val time=Calendar.getInstance().timeInMillis
-        val sql= "delete from msgdata where time<'$time'"
+        var time=Calendar.getInstance().timeInMillis
+        var sql= "delete from msgdata where time<'$time'"
         getStmt()?.execute(sql)
 
-        val sql1= "delete from msgdata where [group]='null' or qq='null'"
-        getStmt()?.execute(sql1)
+        //删除超过7天的信息
+        val afterTime=time+ (7 * 24 * 3600*1000)
+        sql="delete from msgdata where time>'$afterTime'"
+        getStmt()?.execute(sql)
+
+        sql= "delete from msgdata where [group]='null' or qq='null'"
+        getStmt()?.execute(sql)
     }
 
     fun getAutoSendMessage():List<Message>?{
@@ -212,7 +216,7 @@ class DbManager{
                 message.group = group
                 list.add(message)
             }else{
-                println("不在自动发送的群组中，请在配置文件中添加")
+                println("不在自动发送的群组中，请在配置文件中添加:$group")
             }
         }
         rs?.close()

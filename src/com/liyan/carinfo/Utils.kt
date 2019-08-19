@@ -75,4 +75,14 @@ object Utils{
         }
         return map.contains(groupId)
     }
+
+    fun isBlackList(qq:String):Boolean{
+        val groupStr=readFileByLines("db/blacklist")
+        val data=groupStr.split("|")
+        val map=HashMap<String,String>()
+        data.forEach{
+            map.put(it,it)
+        }
+        return map.contains(qq)
+    }
 }
